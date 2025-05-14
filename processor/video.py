@@ -7,7 +7,7 @@ import os
 from typing import Iterator
 from vertexai.generative_models import Part
 
-from ai_service import analyze_content
+from ai_service import analyze_content_with_gemini
 
 def read_video_file(file_path: str) -> tuple[bytes, str]:
     """
@@ -40,8 +40,7 @@ def read_video_file(file_path: str) -> tuple[bytes, str]:
 
 def process_video(
     file_path: str,
-    prompt = "Based on official medical norms in Switzerland, determine whether the content is compliant. If the content is not compliant, identify and highlight the specific parts of the video that violate the regulations.",
-    system_instruction: str = "You are a senior compliance officer for pharmaceutical regulations in Switzerland. Your task is to analyze the provided video and determine whether it complies with official medical norms in Switzerland."
+    country:str,
 ) -> Iterator[str]:
     """
     Process a video file (MP4, WEBM, MKV) using VertexAI.
@@ -63,8 +62,7 @@ def process_video(
     ]
 
     # Analyze the content using VertexAI
-    return analyze_content(
+    return analyze_content_with_gemini(
         content_parts=content_parts,
-        prompt=prompt,
-        system_instruction=system_instruction
+        country=country
     )

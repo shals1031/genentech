@@ -8,7 +8,7 @@ from typing import Iterator
 from bs4 import BeautifulSoup
 from vertexai.generative_models import Part
 
-from ai_service import analyze_content
+from ai_service import analyze_content_with_gemini
 
 def fetch_url_content(url: str) -> str:
     """
@@ -48,8 +48,7 @@ def fetch_url_content(url: str) -> str:
 
 def process_url(
     url: str,
-    prompt: str = "Based on official medical norms in Switzerland, determine whether the content is compliant. If the content is not compliant, identify and highlight the specific parts of the document that violate the regulations.",
-    system_instruction: str = "You are a senior compliance officer for pharmaceutical regulations in Switzerland. Your task is to analyze the provided content and determine whether it complies with official medical norms in Switzerland."
+    country:str,
 ) -> Iterator[str]:
     """
     Process a URL using web scraping and VertexAI.
@@ -72,8 +71,7 @@ def process_url(
     ]
 
     # Analyze the content using VertexAI
-    return analyze_content(
+    return analyze_content_with_gemini(
         content_parts=content_parts,
-        prompt=prompt,
-        system_instruction=system_instruction
+        country=country
     )

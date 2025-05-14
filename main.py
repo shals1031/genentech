@@ -10,15 +10,20 @@ from typing import Dict, Any
 import re
 from datetime import datetime
 import docx
+import shutil
 
 # Import custom modules
-from data.country_data import COUNTRY_LANGUAGE_CODES
+from data.country_data import COUNTRY_LANGUAGE_DESCRIPTION
 from ui import LabeledCombobox, InputField, TextArea
 from processor import process_document, process_url, process_image, process_video
+# Import the transform function
+from ai_service_transform import transform_document_with_openai
+from processor.document import read_document_file
 
 
 class Application(tk.Tk):
     """Main application class."""
+    analysis_results: str = ""
 
     def __init__(self):
         """Initialize the application."""
@@ -51,7 +56,7 @@ class Application(tk.Tk):
         self.country_dropdown = LabeledCombobox(
             self.input_frame,
             "Country:",
-            list(COUNTRY_LANGUAGE_CODES.keys())
+            list(COUNTRY_LANGUAGE_DESCRIPTION.keys())
         )
         self.country_dropdown.grid(row=0, column=0, sticky="ew", pady=5)
 
@@ -154,29 +159,22 @@ class Application(tk.Tk):
     def _get_ui_values(self):
         """Get values from UI components."""
         country = self.country_dropdown.get()
-        language_code = COUNTRY_LANGUAGE_CODES.get(country, "")
+        language = COUNTRY_LANGUAGE_DESCRIPTION.get(country, "")
         content_type = self.content_type_dropdown.get()
         input_value = self.input_field.get()
 
-        return country, language_code, content_type, input_value
+        return country, language, content_type, input_value
 
-    def _create_initial_info(self, country, language_code, content_type, input_value):
+    def _create_initial_info(self, country, language, content_type, input_value):
         """Create initial processing information text."""
         return (
             f"Processing request:\n"
-            f"Country: {country} (Language Code: {language_code})\n"
+            f"Country: {country} (Language : {language})\n"
             f"Content Type: {content_type}\n"
             f"Input: {input_value}\n\n"
         )
 
-    def _create_prompts(self, country):
-        """Create custom prompts based on country."""
-        prompt = f"Based on official medical norms in {country}, determine whether the content is compliant. If the content is not compliant, identify and highlight the specific parts of the document that violate the regulations."
-        system_instruction = f"You are a senior compliance officer for pharmaceutical regulations in {country}. Your task is to analyze the provided content and determine whether it complies with official medical norms in {country}."
-
-        return prompt, system_instruction
-
-    def _process_content(self, content_type, input_value, prompt, system_instruction):
+    def _process_content(self, content_type, input_value, country):
         """Process content based on its type and return the result text."""
         result_text = ""
 
@@ -184,8 +182,7 @@ class Application(tk.Tk):
             self.output_area.append("Fetching and analyzing URL content... Please wait.\n")
             for chunk in process_url(
                 url=input_value,
-                prompt=prompt,
-                system_instruction=system_instruction
+                country=country,
             ):
                 result_text += chunk
                 self.update_idletasks()
@@ -195,8 +192,7 @@ class Application(tk.Tk):
             self.output_area.append(f"Processing {file_type} file... Please wait.\n")
             for chunk in process_document(
                 file_path=input_value,
-                prompt=prompt,
-                system_instruction=system_instruction
+                country=country,
             ):
                 result_text += chunk
                 self.update_idletasks()
@@ -207,8 +203,7 @@ class Application(tk.Tk):
             self.output_area.append(f"Processing {file_type} image... Please wait.\n")
             for chunk in process_image(
                 file_path=input_value,
-                prompt=prompt,
-                system_instruction=system_instruction
+               country=country,
             ):
                 result_text += chunk
                 self.update_idletasks()
@@ -219,8 +214,7 @@ class Application(tk.Tk):
             self.output_area.append(f"Processing {file_type} video... Please wait.\n")
             for chunk in process_video(
                 file_path=input_value,
-                prompt=prompt,
-                system_instruction=system_instruction
+                country=country,
             ):
                 result_text += chunk
                 self.update_idletasks()
@@ -264,7 +258,7 @@ class Application(tk.Tk):
         doc.add_heading('Detailed Analysis', level=1)
         doc.add_paragraph(result_text)
 
-        # Generate filename and ask user where to save
+        # Generate filename and ask the user where to save
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         default_filename = f"{base_filename}_analysis_{timestamp}.docx"
 
@@ -283,18 +277,33 @@ class Application(tk.Tk):
 
         return saved_message
 
-    def _update_ui_with_results(self, initial_info, compliance_status, saved_message):
+    def _update_ui_with_results(self, initial_info, compliance_status,  input_value=None, content_type=None):
         """Update the UI with processing results."""
         self.output_area.set(initial_info)
 
         # Apply appropriate color tag based on compliance status
+        # Only show transform button if the document is non compliant
         if "NOT COMPLIANT" in compliance_status:
             self.output_area.append(f"\n{compliance_status}\n", "non_compliant")
+            # Store the current document path for transformation
+            self.current_document_path = input_value
+
+            # Create a transform button
+            self.transform_button = ttk.Button(
+                self,
+                text="Transform to Compliant Document",
+                command=self._on_transform
+            )
+            self.transform_button.grid(row=4, column=0, pady=10)
         else:
             self.output_area.append(f"\n{compliance_status}\n", "compliant")
 
-        self.output_area.append("\nPlease view the downloaded file for detailed analysis.")
-        self.output_area.append(saved_message)
+            # Remove transform button if it exists
+            if hasattr(self, 'transform_button') and self.transform_button:
+                self.transform_button.destroy()
+                self.transform_button = None
+
+        # self.output_area.append("\nPlease view the downloaded file for detailed analysis.")
         self.output_area.append("\n\nProcessing complete!")
 
     def _is_valid_input(self, content_type, input_value):
@@ -312,15 +321,12 @@ class Application(tk.Tk):
     def _on_process(self):
         """Handle process button click."""
         # Get values from UI components
-        country, language_code, content_type, input_value = self._get_ui_values()
+        country, language, content_type, input_value = self._get_ui_values()
 
         # Create initial info and display it
-        initial_info = self._create_initial_info(country, language_code, content_type, input_value)
+        initial_info = self._create_initial_info(country, language, content_type, input_value)
         self.output_area.set(initial_info)
         self.update_idletasks()
-
-        # Create custom prompts based on country
-        prompt, system_instruction = self._create_prompts(country)
 
         # Check if input is valid for the selected content type
         if self._is_valid_input(content_type, input_value):
@@ -329,16 +335,18 @@ class Application(tk.Tk):
                 self.output_area.append(f"Processing {content_type}...\n")
                 self.update_idletasks()
 
-                result_text = self._process_content(content_type, input_value, prompt, system_instruction)
+                result_text = self._process_content(content_type, input_value,country)
+
+                self.analysis_text = result_text
 
                 # Extract compliance status
                 compliance_status = self._extract_compliance_status(result_text, content_type)
 
                 # Create and save document
-                saved_message = self._create_and_save_document(result_text, compliance_status, input_value, country)
+                # saved_message = self._create_and_save_document(result_text, compliance_status, input_value, country)
 
                 # Update UI with results
-                self._update_ui_with_results(initial_info, compliance_status, saved_message)
+                self._update_ui_with_results(initial_info, compliance_status,"Successfully" , input_value, content_type)
 
             except FileNotFoundError:
                 messagebox.showerror("Error", f"File not found: {input_value}")
@@ -350,6 +358,59 @@ class Application(tk.Tk):
             # For invalid inputs, display a placeholder message
             self.output_area.append("This functionality is not implemented yet or input is invalid.")
             self.output_area.append("Processing complete!")
+
+    def _on_transform(self):
+        """Handle transform button click."""
+        if not hasattr(self, 'current_document_path') or not self.current_document_path:
+            messagebox.showerror("Error", "No document to transform.")
+            return
+
+        try:
+            # Get the country from the UI
+            country = self.country_dropdown.get()
+
+            # Read the document file
+            document_data, file_type = read_document_file(self.current_document_path)
+
+            # Update UI
+            self.output_area.append("\nTransforming document to be compliant... Please wait.\n")
+            self.update_idletasks()
+
+
+
+            # Transform the document
+            transformed_pdf_path = transform_document_with_openai(self.analysis_text,document_data, file_type, country)
+
+            # Ask user where to save the transformed PDF
+            base_filename = os.path.splitext(os.path.basename(self.current_document_path))[0]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"{base_filename}_transformed_{timestamp}.pdf"
+
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF files", "*.pdf")],
+                initialfile=default_filename
+            )
+
+            if save_path:
+                # Copy the temporary PDF to the user-selected location
+                import shutil
+                shutil.copy2(transformed_pdf_path, save_path)
+
+                # Remove the temporary file
+                os.remove(transformed_pdf_path)
+
+                # Update UI
+                self.output_area.append(f"\nTransformed document saved to: {save_path}")
+                self.output_area.append("\nTransformation complete!")
+            else:
+                # Remove the temporary file
+                os.remove(transformed_pdf_path)
+                self.output_area.append("\nSave operation cancelled. Transformed document not saved.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred during transformation: {str(e)}")
+            self.output_area.append(f"Error: {str(e)}")
 
 
 def main():

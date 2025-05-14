@@ -7,7 +7,7 @@ import os
 from typing import Iterator
 from vertexai.generative_models import Part
 
-from ai_service import analyze_content
+from ai_service import analyze_content_with_gemini
 
 def read_document_file(file_path: str) -> tuple[bytes, str]:
     """
@@ -38,8 +38,7 @@ def read_document_file(file_path: str) -> tuple[bytes, str]:
 
 def process_document(
     file_path: str,
-    prompt = "Based on official medical norms in Switzerland, determine whether the content is compliant. If the content is not compliant, identify and highlight the specific parts of the document that violate the regulations.",
-    system_instruction: str = "You are a senior compliance officer for pharmaceutical regulations in Switzerland. Your task is to analyze the provided content and determine whether it complies with official medical norms in Switzerland."
+    country:str,
 ) -> Iterator[str]:
     """
     Process a document file (PDF or TXT) using VertexAI.
@@ -60,9 +59,8 @@ def process_document(
         Part.from_data(document_data, file_type)
     ]
 
-    # Analyze the content using VertexAI
-    return analyze_content(
+    # Analyze the content using VertexAI Gemini Model
+    return analyze_content_with_gemini(
         content_parts=content_parts,
-        prompt=prompt,
-        system_instruction=system_instruction
+        country = country
     )

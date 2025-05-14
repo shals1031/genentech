@@ -4,8 +4,8 @@ This module provides a dictionary mapping countries to their ISO 639-1 language 
 """
 
 # Dictionary mapping countries to their 2-digit language codes
-COUNTRY_LANGUAGE_CODES = {
-    "Switzerland": "de",  # German
-    "Mexico": "es",       # Spanish
-    "Brazil": "pt"        # Portuguese
+COUNTRY_LANGUAGE_DESCRIPTION = {
+    "Switzerland": "German",  # German
+    "Mexico": "Spanish",       # Spanish
+    "Brazil": "Portuguese"        # Portuguese
 }
