@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 Bucket_Name = "pharma-compliance"
 # Add your VertextAI details here
 PROJECT_ID = "gonuts-457218"
@@ -6,4 +11,4 @@ MODEL_NAME = "gemini-2.5-pro-preview-05-06"
 # Add your OpenAI API details here
 OPENAI_API_BASE_URL = "https://api.openai.com/v1"
 OPENAI_MODEL_NAME = "gpt-4.1"
-OPENAI_API_KEY = "<YOUR-SECRET-KEY>"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")  # Get API key from environment
