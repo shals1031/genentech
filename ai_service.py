@@ -78,8 +78,17 @@ def analyze_content_with_gemini(
                 """
 
     prompt = f"""
-              Based on official medical norms in {country}, determine whether the content is compliant. 
-              If the content is not compliant, identify and highlight the specific parts of the document that violate the regulations.
+              You will be provided with the following document
+
+              Follow these steps to determine compliance:
+
+              1.  Analyze the document content been provided .
+              2.  Determine whether the content is compliant with these official medical norms in {country}.
+              3.  If the content is not compliant:
+                *   Identify and highlight the specific parts of the document that violate the regulations.
+                *   Calculate the percentage of the document that is non-compliant for each section.
+              4.  Present your analysis, clearly indicating whether the document is compliant or non-compliant, 
+                  the specific violations (if any), and the percentage of non-compliance for each section and overall document.
               """
 
     # Create the user message with system instruction, prompt and content parts
@@ -113,3 +122,64 @@ def analyze_content_with_gemini(
         if chunk.text:
             yield chunk.text
 
+def format_analysis_document_with_gemini(
+        analysis_document: str, # This will always be a Text file
+        country:str
+) -> Iterator[str]:
+    """
+        Analyze content using VertexAI (Gemini).
+
+        Args:
+            analysis_document: Binary data of the text file to analyze
+            country: The country for which to check compliance
+
+        Returns:
+            An iterator of response chunks from the model
+        """
+    # Initialize the Gemini model
+    model = GenerativeModel(configuration.MODEL_NAME)
+
+    # Create a chat session
+    chat = model.start_chat()
+
+    system_instruction = f"""
+                    You are a senior compliance officer for pharmaceutical regulations in {country}. 
+                    Your task is to analyze a document and extract key metrics related to compliance with medical norms. 
+                    """
+
+    prompt = f"""
+                You will be provided with the document:
+                Follow these steps to analyze the document and extract the required metrics:
+
+                1. Determine the overall compliance status of the document. Is it COMPLIANT or NOT COMPLIANT with medical norms?
+                2. Calculate the percentage of the document that is non-compliant.
+                3. Create a list of objects, each representing a non-compliant section. Each object should have the following attributes:
+                    Headline: The headline of the non-compliant section.
+                    Details: Specific details of the non-compliant aspects in that section.
+                    Percentage: The percentage of non-compliance within that specific section.
+
+                Output the results in the following order in a valid JSON beautify format:
+
+                1. Compliance Status: [COMPLIANT/NOT COMPLIANT]
+                2. Percentage of Non-Compliance: [Percentage]%
+                3. Non-Compliant Sections:
+                    Headline: [Headline of the section]
+                    Details: [Details of the non-compliant aspects]
+                    Percentage: [Percentage of non-compliance in this section]%
+                  """
+
+    # Convert analysis_document bytes to text
+    document_text = analysis_document
+
+    # Create the user message with system instruction, prompt and document content
+    user_message_parts = [
+        Part.from_text(f"System instruction: {system_instruction}\n\nAnalyze the following document:\n\n{prompt}\n\nDocument content:\n\n{document_text}")
+    ]
+
+    # Send the message to the model and get the response
+    response = chat.send_message(user_message_parts, stream=True)
+
+    # Process the streaming response
+    for chunk in response:
+        if chunk.text:
+            yield chunk.text

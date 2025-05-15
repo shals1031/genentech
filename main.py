@@ -11,6 +11,7 @@ import re
 from datetime import datetime
 import docx
 import shutil
+import json
 
 # Import custom modules
 from data.country_data import COUNTRY_LANGUAGE_DESCRIPTION
@@ -18,6 +19,7 @@ from ui import LabeledCombobox, InputField, TextArea
 from processor import process_document, process_url, process_image, process_video
 # Import the transform function
 from ai_service_transform import transform_document_with_openai
+from ai_service import format_analysis_document_with_gemini
 from processor.document import read_document_file
 
 
@@ -237,6 +239,50 @@ class Application(tk.Tk):
 
         return compliance_status
 
+    def _create_and_save_json_document(self, result_text, country, input_value):
+        """Create and save a JSON document with the analysis results."""
+        json_iterator = format_analysis_document_with_gemini(result_text, country)
+
+        # Collect all chunks from the iterator to form a complete JSON string
+        json_result = ""
+        for chunk in json_iterator:
+            json_result += chunk
+
+        # Extract JSON from the response if it's wrapped in markdown code blocks
+        json_string = self._extract_json_from_text(json_result)
+
+        # Validate and format the JSON
+        try:
+            # Parse the JSON to validate it
+            if not json_string:
+                raise json.JSONDecodeError("No valid JSON found in the response", "", 0)
+            parsed_json = json.loads(json_string)
+            # Format it with indentation for better readability
+            json_result = json.dumps(parsed_json, indent=4)
+
+            # Save the JSON to a file on the client side
+            base_filename = os.path.splitext(os.path.basename(input_value))[0] if os.path.isfile(input_value) else "analysis"
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"{base_filename}_analysis_{timestamp}.json"
+
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json")],
+                initialfile=default_filename
+            )
+
+            if save_path:
+                with open(save_path, 'w', encoding='utf-8') as json_file:
+                    json_file.write(json_result)
+                self.output_area.append(f"\nAnalysis JSON saved to: {save_path}")
+            else:
+                self.output_area.append("\nJSON save operation cancelled. Analysis not saved to file.")
+        except json.JSONDecodeError as e:
+            error_msg = f"Error parsing JSON: {str(e)}"
+            messagebox.showerror("JSON Error", error_msg)
+            self.output_area.append(f"\n{error_msg}")
+            self.output_area.append("\nRaw response will not be saved as JSON.")
+
     def _create_and_save_document(self, result_text, compliance_status, input_value, country):
         """Create and save a Word document with the analysis results."""
         doc = docx.Document()
@@ -277,7 +323,7 @@ class Application(tk.Tk):
 
         return saved_message
 
-    def _update_ui_with_results(self, initial_info, compliance_status,  input_value=None, content_type=None):
+    def _update_ui_with_results(self, initial_info, compliance_status,  input_value=None):
         """Update the UI with processing results."""
         self.output_area.set(initial_info)
 
@@ -305,6 +351,42 @@ class Application(tk.Tk):
 
         # self.output_area.append("\nPlease view the downloaded file for detailed analysis.")
         self.output_area.append("\n\nProcessing complete!")
+
+    def _extract_json_from_text(self, text):
+        """Extract JSON from text that might contain markdown or other formatting."""
+        # Try to find JSON between triple backticks (markdown code blocks)
+        import re
+        json_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
+        matches = re.findall(json_pattern, text)
+
+        if matches:
+            # Try each match until we find valid JSON
+            for match in matches:
+                try:
+                    # Validate that this is actually JSON
+                    json.loads(match.strip())
+                    return match.strip()
+                except json.JSONDecodeError:
+                    continue
+
+        # If no valid JSON found in code blocks, try to find JSON objects directly
+        # Look for text that starts with { and ends with }
+        json_pattern = r'(\{[\s\S]*\})'
+        matches = re.findall(json_pattern, text)
+
+        if matches:
+            # Try each match until we find valid JSON
+            for match in matches:
+                try:
+                    # Validate that this is actually JSON
+                    json.loads(match.strip())
+                    return match.strip()
+                except json.JSONDecodeError:
+                    continue
+
+        # If we still haven't found valid JSON, return the original text
+        # (it will likely fail JSON parsing, but we'll handle that in the calling function)
+        return text.strip()
 
     def _is_valid_input(self, content_type, input_value):
         """Check if the input is valid for the selected content type."""
@@ -342,11 +424,14 @@ class Application(tk.Tk):
                 # Extract compliance status
                 compliance_status = self._extract_compliance_status(result_text, content_type)
 
+                # Create and save a JSON document
+                self._create_and_save_json_document(result_text, country, input_value)
+
                 # Create and save document
                 # saved_message = self._create_and_save_document(result_text, compliance_status, input_value, country)
 
                 # Update UI with results
-                self._update_ui_with_results(initial_info, compliance_status,"Successfully" , input_value, content_type)
+                self._update_ui_with_results(initial_info, compliance_status , input_value)
 
             except FileNotFoundError:
                 messagebox.showerror("Error", f"File not found: {input_value}")
