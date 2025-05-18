@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tab-pane fade show active" id="analyze" role="tabpanel">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-upload me-2"></i>Document Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="country" class="form-label">Country</label>
+                            <select class="form-select" id="country" name="country" required>
+                                <option value="" selected disabled>Select a country</option>
+                                {% for country in countries %}
+                                <option value="{{ country }}">{{ country }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="content_type" class="form-label">Content Type</label>
+                            <select class="form-select" id="content_type" name="content_type" required>
+                                <option value="" selected disabled>Select content type</option>
+                                {% for content_type in content_types %}
+                                <option value="{{ content_type }}">{{ content_type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="url_input" style="display: none;">
+                            <label for="input_value" class="form-label">Enter URL</label>
+                            <input type="url" class="form-control" id="input_value" name="input_value" placeholder="https://example.com">
+                        </div>
+                        
+                        <div class="mb-3" id="file_input" style="display: none;">
+                            <label for="file" class="form-label">Upload File</label>
+                            <input type="file" class="form-control" id="file" name="file">
+                            <div class="form-text" id="file_help_text"></div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="analyze_btn">
+                                <i class="fas fa-search me-2"></i>Analyze
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>About This Tool
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>The Pharma Compliance Tool helps you analyze pharmaceutical documents for compliance with country-specific medical norms. Follow these steps:</p>
+                    
+                    <ol>
+                        <li>Select the country for which you want to check compliance.</li>
+                        <li>Choose the type of content you want to analyze (URL, Document, Image, or Video).</li>
+                        <li>Upload your file or enter a URL.</li>
+                        <li>Click "Analyze" to process your content.</li>
+                        <li>View the detailed analysis results in the Results tab.</li>
+                        <li>If your document is non-compliant, use the Transform tab to convert it to a compliant version.</li>
+                    </ol>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> For best results, ensure your documents are in a readable format. The tool supports PDF and TXT files for document analysis.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Show/hide input fields based on content type selection
+        $('#content_type').change(function() {
+            const contentType = $(this).val();
+            
+            // Hide all input fields first
+            $('#url_input, #file_input').hide();
+            
+            // Show the appropriate input field based on content type
+            if (contentType === 'URL') {
+                $('#url_input').show();
+                $('#input_value').attr('required', true);
+                $('#file').attr('required', false);
+            } else {
+                $('#file_input').show();
+                $('#file').attr('required', true);
+                $('#input_value').attr('required', false);
+                
+                // Update help text based on content type
+                let helpText = '';
+                if (contentType === 'Document') {
+                    helpText = 'Supported formats: PDF, TXT';
+                } else if (contentType === 'Image') {
+                    helpText = 'Supported formats: JPEG, JPG, PNG';
+                } else if (contentType === 'Video') {
+                    helpText = 'Supported formats: MP4, WEBM, MKV';
+                }
+                $('#file_help_text').text(helpText);
+            }
+        });
+        
+        // Form validation
+        $('form').submit(function(event) {
+            const contentType = $('#content_type').val();
+            const country = $('#country').val();
+            
+            if (!country) {
+                alert('Please select a country');
+                event.preventDefault();
+                return false;
+            }
+            
+            if (!contentType) {
+                alert('Please select a content type');
+                event.preventDefault();
+                return false;
+            }
+            
+            if (contentType === 'URL') {
+                const url = $('#input_value').val();
+                if (!url) {
+                    alert('Please enter a URL');
+                    event.preventDefault();
+                    return false;
+                }
+            } else {
+                const file = $('#file').val();
+                if (!file) {
+                    alert('Please select a file');
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // Validate file extension
+                const fileExtension = file.split('.').pop().toLowerCase();
+                let validExtensions = [];
+                
+                if (contentType === 'Document') {
+                    validExtensions = ['pdf', 'txt'];
+                } else if (contentType === 'Image') {
+                    validExtensions = ['jpeg', 'jpg', 'png'];
+                } else if (contentType === 'Video') {
+                    validExtensions = ['mp4', 'webm', 'mkv'];
+                }
+                
+                if (validExtensions.length > 0 && !validExtensions.includes(fileExtension)) {
+                    alert(`Invalid file format. Please upload a ${validExtensions.join(', ')} file.`);
+                    event.preventDefault();
+                    return false;
+                }
+            }
+            
+            // Show loading state
+            $('#analyze_btn').html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Analyzing...');
+            $('#analyze_btn').attr('disabled', true);
+        });
+    });
+</script>
+{% endblock %}

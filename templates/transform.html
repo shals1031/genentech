@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tab-pane fade show active" id="transform" role="tabpanel">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-magic me-2"></i>Transform Document
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Info:</strong> This tool will transform your non-compliant document into a compliant version according to the country's medical norms.
+                    </div>
+                    
+                    <div id="transform-status" class="mb-4">
+                        <p>Your document has been analyzed and found to be <strong class="text-danger">NON-COMPLIANT</strong> with medical norms.</p>
+                        <p>Click the button below to transform it into a compliant version.</p>
+                    </div>
+                    
+                    <div id="transform-controls">
+                        <button id="transform-btn" class="btn btn-primary">
+                            <i class="fas fa-magic me-2"></i>Transform Document
+                        </button>
+                    </div>
+                    
+                    <div id="transform-progress" class="mt-4" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center">Transforming document... This may take a few minutes.</p>
+                    </div>
+                    
+                    <div id="transform-result" class="mt-4" style="display: none;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Success!</strong> Your document has been transformed successfully.
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a id="download-btn" href="{{ url_for('download_transformed') }}" class="btn btn-success">
+                                <i class="fas fa-download me-2"></i>Download Transformed Document
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div id="transform-error" class="mt-4" style="display: none;">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>Error!</strong> <span id="error-message">An error occurred during transformation.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>About Transformation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>The transformation process uses advanced AI to:</p>
+                    
+                    <ol>
+                        <li>Analyze the non-compliant sections of your document</li>
+                        <li>Apply country-specific medical norms and regulations</li>
+                        <li>Rewrite content to ensure compliance while preserving meaning</li>
+                        <li>Generate a new PDF document that meets all compliance requirements</li>
+                    </ol>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Note:</strong> While our AI is highly accurate, we recommend reviewing the transformed document before official use.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle transform button click
+        $('#transform-btn').click(function() {
+            // Show progress
+            $('#transform-controls').hide();
+            $('#transform-progress').show();
+            $('#transform-result').hide();
+            $('#transform-error').hide();
+            
+            // Call the transform API
+            $.ajax({
+                url: '{{ url_for("transform_document") }}',
+                type: 'POST',
+                success: function(response) {
+                    // Hide progress
+                    $('#transform-progress').hide();
+                    
+                    // Show result
+                    $('#transform-result').show();
+                },
+                error: function(xhr, status, error) {
+                    // Hide progress
+                    $('#transform-progress').hide();
+                    
+                    // Show error
+                    $('#transform-error').show();
+                    
+                    // Set error message
+                    let errorMessage = 'An error occurred during transformation.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage = xhr.responseJSON.error;
+                    }
+                    $('#error-message').text(errorMessage);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

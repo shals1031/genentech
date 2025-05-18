@@ -1,0 +1,257 @@
+/* Custom CSS for Pharma Compliance Tool */
+
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --pharma-blue: #0056b3;
+    --pharma-light-blue: #e6f2ff;
+    --pharma-green: #28a745;
+    --pharma-red: #dc3545;
+    --pharma-yellow: #ffc107;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Header and Navigation */
+.navbar {
+    background-color: var(--pharma-blue) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: white !important;
+}
+
+.navbar-brand i {
+    color: var(--pharma-yellow);
+}
+
+/* Tabs */
+.nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.nav-tabs .nav-link {
+    margin-bottom: -1px;
+    border: 1px solid transparent;
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--pharma-blue);
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link:hover:not(.active):not(.disabled) {
+    border-color: #e9ecef #e9ecef #dee2e6;
+    background-color: #f8f9fa;
+    color: var(--pharma-blue);
+}
+
+.nav-tabs .nav-link.disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    background-color: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: var(--pharma-light-blue);
+    border-bottom: 1px solid #e9ecef;
+    padding: 15px 20px;
+    font-weight: 600;
+    border-top-left-radius: 10px !important;
+    border-top-right-radius: 10px !important;
+    color: var(--pharma-blue);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--pharma-blue);
+    border-color: var(--pharma-blue);
+}
+
+.btn-primary:hover {
+    background-color: #004494;
+    border-color: #004494;
+}
+
+.btn-success {
+    background-color: var(--pharma-green);
+    border-color: var(--pharma-green);
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+/* Form Elements */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+}
+
+.form-control, .form-select {
+    border-radius: 5px;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--pharma-blue);
+    box-shadow: 0 0 0 0.25rem rgba(0, 86, 179, 0.25);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.status-badge.compliant {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--pharma-green);
+}
+
+.status-badge.warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--pharma-yellow);
+}
+
+.status-badge.non-compliant {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--pharma-red);
+}
+
+/* Text Area */
+.text-area {
+    width: 100%;
+    min-height: 300px;
+    border-radius: 5px;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    background-color: #f8f9fa;
+}
+
+/* Highlights */
+.highlight-compliant {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--pharma-green);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.highlight-non-compliant {
+    background-color: #ffffaa;
+    color: inherit;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Accordion */
+.accordion-button:not(.collapsed) {
+    background-color: var(--pharma-light-blue);
+    color: var(--pharma-blue);
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(0, 86, 179, 0.25);
+}
+
+/* Progress Bar */
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Footer */
+.footer {
+    background-color: #fff;
+    padding: 20px 0;
+    text-align: center;
+    margin-top: 40px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 5px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background-color: var(--pharma-light-blue);
+    border-color: var(--pharma-blue);
+    color: var(--pharma-blue);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 15px;
+    }
+
+    .card-header {
+        padding: 12px 15px;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .btn {
+        padding: 6px 12px;
+    }
+}

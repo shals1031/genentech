@@ -151,8 +151,6 @@ def format_analysis_document_with_gemini(
                 You will be provided with the document:
                 Follow these steps to analyze the document and extract the required metrics:
 
-                1. Determine the overall compliance status of the document. Is it COMPLIANT or NOT COMPLIANT with medical norms?
-                2. Calculate the percentage of the document that is non-compliant.
                 3. Create a list of objects, each representing a non-compliant section. Each object should have the following attributes:
                     Headline: The headline of the non-compliant section.
                     Details: Specific details of the non-compliant aspects in that section.

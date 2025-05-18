@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tab-pane fade show active" id="results" role="tabpanel">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <!-- Compliance Status Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Compliance Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Compliance Status</h4>
+                            <div id="status-badge" class="status-badge">
+                                {{ analysis_data.get('Compliance Status', 'Unknown') }}
+                            </div>
+                            <p>{{ compliance_status }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Non-Compliance Percentage</h4>
+                            <div class="progress">
+                                <div id="progress-bar" class="progress-bar" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    0%
+                                </div>
+                            </div>
+                            <p id="percentage-text">
+                                0% of the document is non-compliant
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Analysis Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Detailed Analysis</h4>
+                            <div class="analysis-details p-3" style="white-space: pre-wrap; overflow-y: auto; max-height: 300px; border: 1px solid #dee2e6; border-radius: 5px;">
+                                {{ analysis_result|safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Non-Compliant Sections -->
+            <div id="non-compliant-sections-card" class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Non-Compliant Sections
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="nonCompliantSections">
+                        <!-- Sections will be added dynamically via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document Content with Highlights -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>Document Viewer
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="document-viewer" class="mb-3">
+                        <div id="document-content" class="text-area p-3" style="white-space: pre-wrap; overflow-y: auto; min-height: 500px; max-height: 500px; border: 1px solid #dee2e6; border-radius: 5px;">
+                            <!-- Pages will be displayed here -->
+                        </div>
+                        <div class="pagination-controls d-flex justify-content-between align-items-center mt-3">
+                            <button id="prev-page" class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-chevron-left me-1"></i>Previous Page
+                            </button>
+                            <div class="page-info">
+                                Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                            </div>
+                            <button id="next-page" class="btn btn-outline-primary" disabled>
+                                Next Page<i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Get the analysis data from the server-side
+        const complianceStatus = "{{ analysis_data.get('Compliance Status', 'Unknown') }}";
+        let percentageText = "{{ analysis_data.get('Percentage of Non-Compliance', '0%') }}";
+
+        // Ensure the percentage has a % symbol
+        if (!percentageText.includes('%')) {
+            percentageText += '%';
+        }
+
+        // Parse the percentage value, defaulting to 0 if it can't be parsed
+        const percentageValue = parseFloat(percentageText.replace('%', '')) || 0;
+        const isCompliant = "{{ session.get('is_compliant', 'True') }}" === "True";
+
+        // Update the progress bar
+        $('#progress-bar').css('width', percentageValue + '%');
+        $('#progress-bar').attr('aria-valuenow', percentageValue);
+        $('#progress-bar').text(percentageValue + '%');
+
+        // Update the percentage text
+        $('#percentage-text').text(percentageValue + '% of the document is non-compliant');
+
+        // Set the appropriate status class and color
+        let statusClass = 'compliant';
+        let statusColor = 'success';
+
+        if (percentageValue <= 25) {
+            statusClass = 'compliant';
+            statusColor = 'success';
+        } else if (percentageValue <= 75) {
+            statusClass = 'warning';
+            statusColor = 'warning';
+        } else {
+            statusClass = 'non-compliant';
+            statusColor = 'danger';
+        }
+
+        // Apply the status class and color
+        $('#status-badge').addClass(statusClass);
+        $('#progress-bar').addClass('bg-' + statusColor);
+        $('#percentage-text').addClass('text-' + statusColor);
+
+        // Enable transform tab if document is non-compliant
+        if (!isCompliant) {
+            // Find the transform tab link and enable it
+            const transformTab = $('.nav-link[href="{{ url_for("transform") }}"]');
+            transformTab.removeClass('disabled');
+        }
+
+        // Document pagination variables
+        let documentPages = [];
+        let currentPageIndex = 0;
+
+        const documentContent = {{ original_document|tojson|safe }};
+
+        // Function to split document content into pages
+        function splitIntoPages(content, linesPerPage = 30) {
+            const lines = content.split('\n');
+            const pages = [];
+            let currentPage = [];
+
+            lines.forEach((line, index) => {
+                currentPage.push(line);
+
+                if (currentPage.length >= linesPerPage || index === lines.length - 1) {
+                    pages.push(currentPage.join('\n'));
+                    currentPage = [];
+                }
+            });
+
+            return pages.length > 0 ? pages : [content];
+        }
+
+        // Initialize document pages
+        documentPages = splitIntoPages(documentContent);
+
+        // Update total pages display
+        $('#total-pages').text(documentPages.length);
+
+        // Enable/disable pagination buttons
+        function updatePaginationButtons() {
+            $('#prev-page').prop('disabled', currentPageIndex === 0);
+            $('#next-page').prop('disabled', currentPageIndex === documentPages.length - 1);
+            $('#current-page').text(currentPageIndex + 1);
+        }
+
+        // Display current page
+        function displayCurrentPage() {
+            $('#document-content').html(documentPages[currentPageIndex]);
+            updatePaginationButtons();
+        }
+
+        // Initialize with first page
+        if (documentPages.length > 0) {
+            displayCurrentPage();
+        }
+
+        // Handle pagination button clicks
+        $('#prev-page').click(function() {
+            if (currentPageIndex > 0) {
+                currentPageIndex--;
+                displayCurrentPage();
+            }
+        });
+
+        $('#next-page').click(function() {
+            if (currentPageIndex < documentPages.length - 1) {
+                currentPageIndex++;
+                displayCurrentPage();
+            }
+        });
+
+        // Function to find page containing text
+        function findPageWithText(text) {
+            if (!text) return -1;
+
+            // Split the text into words and filter out short words
+            const words = text.split(/\s+/).filter(word => word.length > 3);
+
+            if (words.length > 0) {
+                // Take a subset of words to make the search more robust
+                const searchWords = words.slice(0, Math.min(5, words.length));
+
+                // Create safe versions of the words for regex
+                const safeWords = searchWords.map(word => 
+                    word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                );
+
+                // Create a regex that looks for pages containing at least 2 of these words
+                const wordPatterns = safeWords.map(word => `(?=.*${word})`).join('');
+                const regex = new RegExp(wordPatterns, 'i');
+
+                for (let i = 0; i < documentPages.length; i++) {
+                    if (regex.test(documentPages[i])) {
+                        return i;
+                    }
+                }
+
+                // If no match with multiple words, try matching any single word
+                for (let i = 0; i < documentPages.length; i++) {
+                    for (const word of safeWords) {
+                        const singleWordRegex = new RegExp(word, 'i');
+                        if (singleWordRegex.test(documentPages[i])) {
+                            return i;
+                        }
+                    }
+                }
+            }
+
+            // Fallback to the original approach
+            const safeText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(safeText, 'i');
+
+            for (let i = 0; i < documentPages.length; i++) {
+                if (regex.test(documentPages[i])) {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        // Function to highlight text in the document content
+        function highlightText(text, headline) {
+            if (!text) return;
+
+            // Find the page containing the text
+            const pageIndex = findPageWithText(text);
+
+            if (pageIndex !== -1) {
+                // Navigate to the page
+                currentPageIndex = pageIndex;
+
+                // First, remove any existing highlights
+                documentPages = documentPages.map(page => 
+                    page.replace(/<mark class="highlight-.*?>(.*?)<\/mark>/g, '$1')
+                );
+
+                // Create a safe version of the text for regex
+                // Split the text into words and create a regex that allows for some flexibility
+                const words = text.split(/\s+/).filter(word => word.length > 3);
+
+                // If we have meaningful words to search for
+                if (words.length > 0) {
+                    // Take a subset of words to make the search more robust
+                    const searchWords = words.slice(0, Math.min(5, words.length));
+
+                    // Create a regex pattern that looks for these words in proximity
+                    const safeWords = searchWords.map(word => 
+                        word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                    );
+
+                    // Look for a section containing at least 2 of these words
+                    const pattern = `([^.!?]*(?:${safeWords.join('|')})[^.!?]*(?:${safeWords.join('|')})[^.!?]*[.!?])`;
+                    const regex = new RegExp(pattern, 'gi');
+
+                    // Replace the text with a highlighted version in the current page
+                    documentPages[currentPageIndex] = documentPages[currentPageIndex].replace(
+                        regex, 
+                        '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+                    );
+                } else {
+                    // Fallback to the original approach if we don't have good words
+                    const safeText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${safeText})`, 'gi');
+
+                    // Replace the text with a highlighted version in the current page
+                    documentPages[currentPageIndex] = documentPages[currentPageIndex].replace(
+                        regex, 
+                        '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+                    );
+                }
+
+                // Display the current page
+                displayCurrentPage();
+
+                // Scroll to the first occurrence of the highlighted text
+                const firstHighlight = $('#document-content mark.highlight-non-compliant').first();
+                if (firstHighlight.length) {
+                    $('#document-content').scrollTop(
+                        firstHighlight.offset().top - $('#document-content').offset().top + $('#document-content').scrollTop() - 100
+                    );
+                }
+
+                // Show a toast notification
+                const toast = `
+                    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="toast-header bg-danger text-white">
+                                <strong class="me-auto">Non-Compliant Section Found</strong>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                            <div class="toast-body">
+                                Highlighted: <strong>${text}</strong> on page ${currentPageIndex + 1}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Remove any existing toasts
+                $('.toast-container').remove();
+
+                // Add the new toast
+                $('body').append(toast);
+
+                // Auto-hide the toast after 3 seconds
+                setTimeout(function() {
+                    $('.toast').toast('hide');
+                }, 3000);
+            }
+        }
+
+        // Populate non-compliant sections
+        const nonCompliantSections = {{ analysis_data.get("Non-Compliant Sections", [])|tojson|safe }};
+
+        if (nonCompliantSections && nonCompliantSections.length > 0) {
+            // Show the non-compliant sections card
+            $('#non-compliant-sections-card').show();
+
+            // Add each section to the accordion
+            nonCompliantSections.forEach(function(section, index) {
+                const headline = section.Headline || `Section ${index + 1}`;
+                const details = section.Details || 'No details available';
+                const percentage = section.Percentage || '0%';
+
+                const sectionHtml = `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading${index}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapse${index}" aria-expanded="false" 
+                                    aria-controls="collapse${index}">
+                                ${headline}
+                                <span class="badge bg-danger ms-2">${percentage}</span>
+                            </button>
+                        </h2>
+                        <div id="collapse${index}" class="accordion-collapse collapse" 
+                             aria-labelledby="heading${index}" data-bs-parent="#nonCompliantSections">
+                            <div class="accordion-body">
+                                <p>${details}</p>
+
+                                <!-- Highlight button -->
+                                <button class="btn btn-danger highlight-section" 
+                                        data-section="${headline}" 
+                                        data-details="${details}">
+                                    <i class="fas fa-search me-1"></i>Highlight in Document
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                $('#nonCompliantSections').append(sectionHtml);
+            });
+
+            // Handle highlight button clicks
+            $(document).on('click', '.highlight-section', function() {
+                const headline = $(this).data('section');
+                const details = $(this).data('details');
+                highlightText(headline,details);
+            });
+
+            // Auto-highlight the first section
+            setTimeout(function() {
+                const firstHighlightButton = $('.highlight-section').first();
+                if (firstHighlightButton.length) {
+                    firstHighlightButton.click();
+
+                    // Also open the accordion item containing this button
+                    firstHighlightButton.closest('.accordion-collapse').addClass('show');
+                    firstHighlightButton.closest('.accordion-item').find('.accordion-button').removeClass('collapsed');
+                }
+            }, 1500);
+        }
+    });
+</script>
+{% endblock %}
