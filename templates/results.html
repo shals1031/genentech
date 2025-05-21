@@ -161,20 +161,9 @@
         const documentContent = {{ original_document|tojson|safe }};
 
         // Function to split document content into pages
-        function splitIntoPages(content, linesPerPage = 30) {
-            const lines = content.split('\n');
-            const pages = [];
-            let currentPage = [];
-
-            lines.forEach((line, index) => {
-                currentPage.push(line);
-
-                if (currentPage.length >= linesPerPage || index === lines.length - 1) {
-                    pages.push(currentPage.join('\n'));
-                    currentPage = [];
-                }
-            });
-
+        function splitIntoPages(content) {
+            let pages = content.split('\n\n');
+            pages = pages.filter(page => page.trim() !== '')
             return pages.length > 0 ? pages : [content];
         }
 
