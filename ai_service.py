@@ -73,22 +73,26 @@ def analyze_content_with_gemini(
     chat = model.start_chat()
 
     system_instruction = f"""
-                You are a senior compliance officer for pharmaceutical regulations in {country}. 
-                Your task is to analyze the provided content and determine whether it complies with official medical norms in {country}.
+                You are a senior compliance officer for pharmaceutical regulations. 
+                Your task is to analyze the provided content and determine whether it complies with official medical norms in the specified {country}.
                 """
 
     prompt = f"""
-              You will be provided with the following document
+                You will be provided with the following document:
 
-              Follow these steps to determine compliance:
+                Follow these steps to determine compliance:
 
-              1.  Analyze the document content been provided .
-              2.  Determine whether the content is compliant with these official medical norms in {country}.
-              3.  If the content is not compliant:
-                *   Identify and highlight the specific parts of the document that violate the regulations.
-                *   Calculate the percentage of the document that is non-compliant for each section.
-              4.  Present your analysis, clearly indicating whether the document is compliant or non-compliant, 
-                  the specific violations (if any), and the percentage of non-compliance for each section and overall document.
+                Analyze the document content provided.
+                Determine whether the overall content is compliant with official medical norms in {country} or not. 
+                Also, present the overall percentage of non-compliance.
+                If the content is not compliant, present your analysis, clearly indicating the specific violations (if any), and the percentage of non-compliance for each page. 
+                Your analysis should show the percentage of non-compliance on each page of the document. It should also clearly mention which particular text in each page was not compliant.
+                Your representation should be like this and in a JSON beautify format:
+                    Compliant Status --> Compliant or Non Compliant
+                    Non-Compliance Percentage --> how much % is it non compliant
+                    Detailed Analysis --> detailed analysis of the document
+                    Non-Compliant Pages --> this should be a list of text present in the document which are non compliant 
+                    and it should be grouped by page number along with the reason for it to be non compliant
               """
 
     # Create the user message with system instruction, prompt and content parts
@@ -122,7 +126,7 @@ def analyze_content_with_gemini(
         if chunk.text:
             yield chunk.text
 
-def format_analysis_document_with_gemini(
+def extract_non_compliance_metrics(
         analysis_document: str, # This will always be a Text file
         country:str
 ) -> Iterator[str]:
@@ -151,19 +155,19 @@ def format_analysis_document_with_gemini(
                 You will be provided with the document:
                 Follow these steps to analyze the document and extract the required metrics:
 
-                3. Create a list of objects, each representing a non-compliant section. Each object should have the following attributes:
-                    Headline: The headline of the non-compliant section.
-                    Details: Specific details of the non-compliant aspects in that section.
-                    Percentage: The percentage of non-compliance within that specific section.
+                3. Create a list of objects, each representing a non-compliant page. Each object should have the following attributes:
+                    Page Number: The page number of the non-compliant page.
+                    Percentage of Non-Compliance: The percentage of non-compliance within that specific page.
+                    Non-Compliant Text: An array of objects, each with:
+                        Text: The specific text in the document that is non-compliant.
+                        Reason: The reason why this text is non-compliant.
 
                 Output the results in the following order in a valid JSON beautify format:
 
-                1. Compliance Status: [COMPLIANT/NOT COMPLIANT]
-                2. Percentage of Non-Compliance: [Percentage]%
-                3. Non-Compliant Sections:
-                    Headline: [Headline of the section]
-                    Details: [Details of the non-compliant aspects]
-                    Percentage: [Percentage of non-compliance in this section]%
+                1. Compliant Status: [COMPLIANT/NON COMPLIANT]
+                2. Non-Compliance Percentage: [Percentage]%
+                3. Detailed Analysis: [A detailed analysis of the document's compliance]
+                4. Non-Compliant Pages: [Array of non-compliant page objects as described above]
                   """
 
     # Convert analysis_document bytes to text

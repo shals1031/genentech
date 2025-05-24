@@ -33,13 +33,13 @@
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link {% if active_tab == 'results' %}active{% elif 'analysis_result' in session %}{% else %}disabled{% endif %}" 
+                <a class="nav-link active"
                    href="{{ url_for('results') if 'analysis_result' in session else '#' }}" role="tab">
                     <i class="fas fa-chart-bar me-2"></i>Results
                 </a>
             </li>
             <li class="nav-item" role="presentation">
-                <a class="nav-link {% if active_tab == 'transform' %}active{% elif 'analysis_result' in session and not session.get('is_compliant', True) %}{% else %}disabled{% endif %}" 
+                <a class="nav-link active"
                    href="{{ url_for('transform') if 'analysis_result' in session and not session.get('is_compliant', True) else '#' }}" role="tab">
                     <i class="fas fa-magic me-2"></i>Transform
                 </a>

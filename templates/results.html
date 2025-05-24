@@ -16,9 +16,8 @@
                         <div class="col-md-6">
                             <h4>Compliance Status</h4>
                             <div id="status-badge" class="status-badge">
-                                {{ analysis_data.get('Compliance Status', 'Unknown') }}
+                                {{ compliance_status }}
                             </div>
-                            <p>{{ compliance_status }}</p>
                         </div>
                         <div class="col-md-6">
                             <h4>Non-Compliance Percentage</h4>
@@ -51,23 +50,23 @@
                         <div class="col-md-12">
                             <h4>Detailed Analysis</h4>
                             <div class="analysis-details p-3" style="white-space: pre-wrap; overflow-y: auto; max-height: 300px; border: 1px solid #dee2e6; border-radius: 5px;">
-                                {{ analysis_result|safe }}
+                                {{ analysis_result }}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Non-Compliant Sections -->
-            <div id="non-compliant-sections-card" class="card mb-4">
+            <!-- Non-Compliant Pages -->
+            <div id="non-compliant-pages-card" class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Non-Compliant Sections
+                        <i class="fas fa-exclamation-triangle me-2"></i>Non-Compliant Pages
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="accordion" id="nonCompliantSections">
-                        <!-- Sections will be added dynamically via JavaScript -->
+                    <div class="accordion" id="nonCompliantPages">
+                        <!-- Pages will be added dynamically via JavaScript -->
                     </div>
                 </div>
             </div>
@@ -107,8 +106,8 @@
 <script>
     $(document).ready(function() {
         // Get the analysis data from the server-side
-        const complianceStatus = "{{ analysis_data.get('Compliance Status', 'Unknown') }}";
-        let percentageText = "{{ analysis_data.get('Percentage of Non-Compliance', '0%') }}";
+        const complianceStatus = "{{ compliance_status }}";
+        let percentageText = "{{ non_compliance_percentage }}";
 
         // Ensure the percentage has a % symbol
         if (!percentageText.includes('%')) {
@@ -117,7 +116,7 @@
 
         // Parse the percentage value, defaulting to 0 if it can't be parsed
         const percentageValue = parseFloat(percentageText.replace('%', '')) || 0;
-        const isCompliant = "{{ session.get('is_compliant', 'True') }}" === "True";
+        const isCompliant = "{{ is_compliant|lower }}" === "true";
 
         // Update the progress bar
         $('#progress-bar').css('width', percentageValue + '%');
@@ -128,8 +127,8 @@
         $('#percentage-text').text(percentageValue + '% of the document is non-compliant');
 
         // Set the appropriate status class and color
-        let statusClass = 'compliant';
-        let statusColor = 'success';
+        let statusClass;
+        let statusColor;
 
         if (percentageValue <= 25) {
             statusClass = 'compliant';
@@ -147,18 +146,11 @@
         $('#progress-bar').addClass('bg-' + statusColor);
         $('#percentage-text').addClass('text-' + statusColor);
 
-        // Enable transform tab if document is non-compliant
-        if (!isCompliant) {
-            // Find the transform tab link and enable it
-            const transformTab = $('.nav-link[href="{{ url_for("transform") }}"]');
-            transformTab.removeClass('disabled');
-        }
-
         // Document pagination variables
         let documentPages = [];
         let currentPageIndex = 0;
 
-        const documentContent = {{ original_document|tojson|safe }};
+        const documentContent = {{ original_document|tojson|safe }} ;
 
         // Function to split document content into pages
         function splitIntoPages(content) {
@@ -182,7 +174,7 @@
 
         // Display current page
         function displayCurrentPage() {
-            $('#document-content').html(documentPages[currentPageIndex]);
+            $('#document-content').html(documentPages[currentPageIndex].replace(/\\n/g, '<br>'));
             updatePaginationButtons();
         }
 
@@ -206,106 +198,28 @@
             }
         });
 
-        // Function to find page containing text
-        function findPageWithText(text) {
-            if (!text) return -1;
-
-            // Split the text into words and filter out short words
-            const words = text.split(/\s+/).filter(word => word.length > 3);
-
-            if (words.length > 0) {
-                // Take a subset of words to make the search more robust
-                const searchWords = words.slice(0, Math.min(5, words.length));
-
-                // Create safe versions of the words for regex
-                const safeWords = searchWords.map(word => 
-                    word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                );
-
-                // Create a regex that looks for pages containing at least 2 of these words
-                const wordPatterns = safeWords.map(word => `(?=.*${word})`).join('');
-                const regex = new RegExp(wordPatterns, 'i');
-
-                for (let i = 0; i < documentPages.length; i++) {
-                    if (regex.test(documentPages[i])) {
-                        return i;
-                    }
-                }
-
-                // If no match with multiple words, try matching any single word
-                for (let i = 0; i < documentPages.length; i++) {
-                    for (const word of safeWords) {
-                        const singleWordRegex = new RegExp(word, 'i');
-                        if (singleWordRegex.test(documentPages[i])) {
-                            return i;
-                        }
-                    }
-                }
-            }
-
-            // Fallback to the original approach
-            const safeText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(safeText, 'i');
-
-            for (let i = 0; i < documentPages.length; i++) {
-                if (regex.test(documentPages[i])) {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
         // Function to highlight text in the document content
-        function highlightText(text, headline) {
+        function highlightText(text, reason, pageIndex) {
             if (!text) return;
-
-            // Find the page containing the text
-            const pageIndex = findPageWithText(text);
 
             if (pageIndex !== -1) {
                 // Navigate to the page
                 currentPageIndex = pageIndex;
 
                 // First, remove any existing highlights
-                documentPages = documentPages.map(page => 
+                documentPages = documentPages.map(page =>
                     page.replace(/<mark class="highlight-.*?>(.*?)<\/mark>/g, '$1')
                 );
+                // Create a more flexible regex pattern
+                // This will handle cases where there might be spaces between characters
+                const flexibleText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // Escape special regex chars
+                                        .replace(/\s+/g, '\\s*')                   // Replace spaces with \s* (zero or more spaces)
+                                        .replace(/-/g, '\\s*-\\s*');
 
-                // Create a safe version of the text for regex
-                // Split the text into words and create a regex that allows for some flexibility
-                const words = text.split(/\s+/).filter(word => word.length > 3);
-
-                // If we have meaningful words to search for
-                if (words.length > 0) {
-                    // Take a subset of words to make the search more robust
-                    const searchWords = words.slice(0, Math.min(5, words.length));
-
-                    // Create a regex pattern that looks for these words in proximity
-                    const safeWords = searchWords.map(word => 
-                        word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                    );
-
-                    // Look for a section containing at least 2 of these words
-                    const pattern = `([^.!?]*(?:${safeWords.join('|')})[^.!?]*(?:${safeWords.join('|')})[^.!?]*[.!?])`;
-                    const regex = new RegExp(pattern, 'gi');
-
-                    // Replace the text with a highlighted version in the current page
-                    documentPages[currentPageIndex] = documentPages[currentPageIndex].replace(
-                        regex, 
-                        '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
-                    );
-                } else {
-                    // Fallback to the original approach if we don't have good words
-                    const safeText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`(${safeText})`, 'gi');
-
-                    // Replace the text with a highlighted version in the current page
-                    documentPages[currentPageIndex] = documentPages[currentPageIndex].replace(
-                        regex, 
-                        '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
-                    );
-                }
+                documentPages[currentPageIndex] = documentPages[currentPageIndex].replaceAll('\n','').replace(
+                    new RegExp(`(${flexibleText})`, 'gi'),
+                    '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+                );
 
                 // Display the current page
                 displayCurrentPage();
@@ -317,87 +231,106 @@
                         firstHighlight.offset().top - $('#document-content').offset().top + $('#document-content').scrollTop() - 100
                     );
                 }
-
-                // Show a toast notification
-                const toast = `
-                    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
-                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                            <div class="toast-header bg-danger text-white">
-                                <strong class="me-auto">Non-Compliant Section Found</strong>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                            </div>
-                            <div class="toast-body">
-                                Highlighted: <strong>${text}</strong> on page ${currentPageIndex + 1}
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Remove any existing toasts
-                $('.toast-container').remove();
-
-                // Add the new toast
-                $('body').append(toast);
-
-                // Auto-hide the toast after 3 seconds
-                setTimeout(function() {
-                    $('.toast').toast('hide');
-                }, 3000);
             }
         }
 
-        // Populate non-compliant sections
-        const nonCompliantSections = {{ analysis_data.get("Non-Compliant Sections", [])|tojson|safe }};
+        // Populate non-compliant pages
+        const nonCompliantPages = {{ non_compliance_pages|tojson|safe }};
 
-        if (nonCompliantSections && nonCompliantSections.length > 0) {
-            // Show the non-compliant sections card
-            $('#non-compliant-sections-card').show();
+        if (nonCompliantPages && nonCompliantPages.length > 0) {
+            // Show the non-compliant pages card
+            $('#non-compliant-pages-card').show();
 
-            // Add each section to the accordion
-            nonCompliantSections.forEach(function(section, index) {
-                const headline = section.Headline || `Section ${index + 1}`;
-                const details = section.Details || 'No details available';
-                const percentage = section.Percentage || '0%';
+            // Add each page to the accordion
+            nonCompliantPages.forEach(function(page, index) {
+                let percentage = '0%';
+                const pageNumber = page["Page Number"] || `${index + 1}`;
+                // Regex to match any key containing both "percentage" and "non-compliance" in any order
+                const percentageRegex =  /(?=.*percentage)(?=.*non[\s_\-]*compliance)/i;;
+                // Find the first key that matches our pattern
+                percentageKey = Object.keys(page).find(key => percentageRegex.test(key.trim()));
+                if (percentageKey) {
+                    percentage = page[percentageKey];
+                }
 
-                const sectionHtml = `
+                // Set the appropriate status class and color
+                let statusClass = 'compliant';
+                let statusColor = 'success';
+
+                if (percentage <= 25) {
+                    statusColor = 'success';
+                } else if (percentage <= 75) {
+                    statusColor = 'warning';
+                } else {
+                    statusColor = 'danger';
+                }
+
+                // Create the page header
+                let pageHtml = `
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="heading${index}">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
                                     data-bs-target="#collapse${index}" aria-expanded="false" 
                                     aria-controls="collapse${index}">
-                                ${headline}
-                                <span class="badge bg-danger ms-2">${percentage}</span>
+                                Page ${pageNumber}
+                                <span id="sections-percentage" class="badge bg-${statusColor} ms-2"> Non Compliance ${percentage} %</span>
                             </button>
                         </h2>
                         <div id="collapse${index}" class="accordion-collapse collapse" 
-                             aria-labelledby="heading${index}" data-bs-parent="#nonCompliantSections">
+                             aria-labelledby="heading${index}" data-bs-parent="#nonCompliantPages">
                             <div class="accordion-body">
-                                <p>${details}</p>
+                `;
 
-                                <!-- Highlight button -->
-                                <button class="btn btn-danger highlight-section" 
-                                        data-section="${headline}" 
-                                        data-details="${details}">
+                const nonCompliantTexts = page["non_compliant_texts_with_reasons"] || page["Violations"] ||  page["Non-Compliant Text"] || page["NonCompliantText"] || page["Non-Compliant Items"] || [];
+                // Add each non-compliant text item
+                if (nonCompliantTexts.length > 0) {
+                    pageHtml += '<div class="list-group">';
+                    nonCompliantTexts.forEach(function (textItem, textIndex) {
+                        const text = textItem.Text || textItem.text || '';
+                        const reason = textItem.Reason || textItem.reason || 'No reason provided';
+
+                        pageHtml += `
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">Non-Compliant Text ${textIndex + 1}</h5>
+                                </div>
+                                <p class="mb-1"><strong>Text:</strong> ${text}</p>
+                                <p class="mb-1"><strong>Reason:</strong> ${reason}</p>
+                                <button class="btn btn-sm btn-danger highlight-text mt-2" 
+                                        data-text="${text.replace(/"/g, '&quot;')}" 
+                                        data-reason="${reason.replace(/"/g, '&quot;')}"
+                                        data-pagenumber="${pageNumber}">
                                     <i class="fas fa-search me-1"></i>Highlight in Document
                                 </button>
+                            </div>
+                        `;
+                    });
+                    pageHtml += '</div>';
+                } else {
+                    pageHtml += '<p>No specific non-compliant text identified for this page.</p>';
+                }
+
+                // Close the page HTML
+                pageHtml += `
                             </div>
                         </div>
                     </div>
                 `;
 
-                $('#nonCompliantSections').append(sectionHtml);
+                $('#nonCompliantPages').append(pageHtml);
             });
 
             // Handle highlight button clicks
-            $(document).on('click', '.highlight-section', function() {
-                const headline = $(this).data('section');
-                const details = $(this).data('details');
-                highlightText(headline,details);
+            $(document).on('click', '.highlight-text', function() {
+                const text = $(this).data('text');
+                const reason = $(this).data('reason');
+                const pagenumber = $(this).data('pagenumber');
+                highlightText(text, reason,pagenumber-1);
             });
 
-            // Auto-highlight the first section
+            // Auto-highlight the first text item
             setTimeout(function() {
-                const firstHighlightButton = $('.highlight-section').first();
+                const firstHighlightButton = $('.highlight-text').first();
                 if (firstHighlightButton.length) {
                     firstHighlightButton.click();
 
