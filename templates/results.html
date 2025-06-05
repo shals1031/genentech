@@ -199,40 +199,107 @@
         });
 
         // Function to highlight text in the document content
-        function highlightText(text, reason, pageIndex) {
-            if (!text) return;
+       function highlightText(text, reason, pageIndex) {
+    if (!text) return;
 
-            if (pageIndex !== -1) {
-                // Navigate to the page
-                currentPageIndex = pageIndex;
+    if (pageIndex !== -1) {
+        // Navigate to the page
+        currentPageIndex = pageIndex;
 
-                // First, remove any existing highlights
-                documentPages = documentPages.map(page =>
-                    page.replace(/<mark class="highlight-.*?>(.*?)<\/mark>/g, '$1')
-                );
-                // Create a more flexible regex pattern
-                // This will handle cases where there might be spaces between characters
-                const flexibleText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // Escape special regex chars
-                                        .replace(/\s+/g, '\\s*')                   // Replace spaces with \s* (zero or more spaces)
-                                        .replace(/-/g, '\\s*-\\s*');
+        // First, remove any existing highlights
+        documentPages = documentPages.map(page =>
+            page.replace(/<mark class="highlight-.*?>(.*?)<\/mark>/g, '$1')
+        );
 
-                documentPages[currentPageIndex] = documentPages[currentPageIndex].replaceAll('\n','').replace(
-                    new RegExp(`(${flexibleText})`, 'gi'),
-                    '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
-                );
+        // Process the document content for this page
+        const pageContent = documentPages[currentPageIndex].replaceAll('\n', '');
 
-                // Display the current page
-                displayCurrentPage();
+        // Create a flexible approach for matching text
+        // 1. Try exact match first with flexible spacing
+        const flexibleText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // Escape special regex chars
+                                .replace(/\s+/g, '\\s*')                   // Replace spaces with \s* (zero or more spaces)
+                                .replace(/-/g, '\\s*-\\s*');               // Handle hyphens flexibly
 
-                // Scroll to the first occurrence of the highlighted text
-                const firstHighlight = $('#document-content mark.highlight-non-compliant').first();
-                if (firstHighlight.length) {
-                    $('#document-content').scrollTop(
-                        firstHighlight.offset().top - $('#document-content').offset().top + $('#document-content').scrollTop() - 100
-                    );
+        // Create a regex for exact match with flexible spacing
+        const exactRegex = new RegExp(`(${flexibleText})`, 'gi');
+
+        // Check if exact match exists
+        if (exactRegex.test(pageContent)) {
+            // Use the exact match approach if found
+            documentPages[currentPageIndex] = pageContent.replace(
+                exactRegex,
+                '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+            );
+        } else {
+            // 2. If no exact match, try fuzzy matching by splitting the text into words
+            // and finding the best match section in the document
+            const searchWords = text.split(/\s+/).filter(word => word.length > 3);
+
+            if (searchWords.length > 0) {
+                // Create a pattern that matches if at least 60% of significant words appear in sequence
+                const significantWordsToMatch = Math.max(1, Math.ceil(searchWords.length * 0.6));
+
+                // Build a pattern that can match partial content
+                const partialPatterns = [];
+
+                // Create overlapping sequences of words to look for
+                for (let i = 0; i <= searchWords.length - significantWordsToMatch; i++) {
+                    const wordSubset = searchWords.slice(i, i + significantWordsToMatch);
+                    const pattern = wordSubset.map(word =>
+                        word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                    ).join('[\\s\\S]{0,30}?'); // Allow up to 30 characters between words
+                    partialPatterns.push(pattern);
+                }
+
+                // Try each pattern until we find a match
+                let matchFound = false;
+
+                for (const pattern of partialPatterns) {
+                    const fuzzyRegex = new RegExp(`((?:[\\s\\S]{0,50}?${pattern}[\\s\\S]{0,50}?))`, 'gi');
+
+                    if (fuzzyRegex.test(pageContent)) {
+                        // We found a partial match, highlight it
+                        documentPages[currentPageIndex] = pageContent.replace(
+                            fuzzyRegex,
+                            '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+                        );
+                        matchFound = true;
+                        break;
+                    }
+                }
+
+                // If still no match found, try to match individual significant words
+                if (!matchFound) {
+                    // Find the longest word (likely most unique) to anchor our search
+                    const sortedWords = [...searchWords].sort((a, b) => b.length - a.length);
+                    if (sortedWords.length > 0) {
+                        const mainWord = sortedWords[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const contextRegex = new RegExp(`([^.!?]{0,100}${mainWord}[^.!?]{0,100})`, 'gi');
+
+                        if (contextRegex.test(pageContent)) {
+                            documentPages[currentPageIndex] = pageContent.replace(
+                                contextRegex,
+                                '<mark class="highlight-non-compliant" style="background-color: #ffffaa; color: inherit;">$1</mark>'
+                            );
+                        }
+                    }
                 }
             }
         }
+
+        // Display the current page
+        displayCurrentPage();
+
+        // Scroll to the first occurrence of the highlighted text
+        const firstHighlight = $('#document-content mark.highlight-non-compliant').first();
+        if (firstHighlight.length) {
+            $('#document-content').scrollTop(
+                firstHighlight.offset().top - $('#document-content').offset().top + $('#document-content').scrollTop() - 100
+            );
+        }
+    }
+}
+
 
         // Populate non-compliant pages
         const nonCompliantPages = {{ non_compliance_pages|tojson|safe }};

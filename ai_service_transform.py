@@ -101,7 +101,9 @@ def transform_document_with_openai(
     6.  **Error Handling:** If full compliance cannot be achieved due to missing information or conflicting regulations, provide a detailed explanation of the issues and suggest possible resolutions.
     7.  **Language:** Ensure the final document is in {language} and adheres to professional language standards.
 
-    Your output should be a fully compliant PDF document in {language}, adhering to all official {country} medical norms
+    Your output should be a fully compliant PDF document in {language}, adhering to all official {country} medical norms. 
+    Please ensure that the document only consist of the translated and compliant content and no other information should be included.
+    Especially some basis sytem information should not be included in the final document.
     """
 
 

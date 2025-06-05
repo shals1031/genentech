@@ -92,7 +92,35 @@ def analyze_content_with_gemini(
                     Non-Compliance Percentage --> how much % is it non compliant
                     Detailed Analysis --> detailed analysis of the document
                     Non-Compliant Pages --> this should be a list of text present in the document which are non compliant 
-                    and it should be grouped by page number along with the reason for it to be non compliant
+                    and it should be grouped by page number along with the reason for it to be non compliant. This should always be an array
+                    in the below format
+                    "Non-Compliant Pages": [
+                    {{
+                      "Page Number": X,
+                      "Page Non-Compliance Percentage": XX,
+                      "Non-Compliant Text": [
+                        {{
+                          "Text": "The specific non-compliant text from the document",
+                          "Reason": "The specific reason why this text violates regulations"
+                        }}
+                        // Additional non-compliant items on this page
+                      ]
+                    }}
+                    // Additional non-compliant pages
+                  ]
+                  
+                  IMPORTANT INSTRUCTIONS:
+
+                    1. You MUST use this EXACT JSON structure with these EXACT field names.
+                    2. For "Non-Compliant Text", always use "Text" and "Reason" as the field names.
+                    3. For "Page Number", always use integer values (1, 2, 3, etc.).
+                    4. For "Page Non-Compliance Percentage", always use integer values (0-100).
+                    5. For "Non-Compliance Percentage", always use integer values (0-100).
+                    6. If a document is fully compliant, return an empty array for "Non-Compliant Pages".
+                    7. Do not add any additional fields or change the structure of this JSON format.
+                    8. Do not include any explanatory text outside of the JSON structure.
+                    9. Ensure all JSON is properly formatted and valid.
+ 
               """
 
     # Create the user message with system instruction, prompt and content parts

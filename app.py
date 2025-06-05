@@ -108,7 +108,7 @@ def analyze():
         session['analysis_result'] = analysis_result
         session['compliance_status'] = compliance_status
         session['is_compliant'] = is_compliant
-        session['analysis_data'] = non_compliance_pages
+        session['non_compliance_pages'] = non_compliance_pages
         session['country'] = country
         session['content_type'] = content_type
         session['input_value'] = input_value
@@ -147,35 +147,27 @@ def results():
     original_document = session.get('original_document', '')
 
     # Get the analysis data and sanitize the non-compliant sections
-    analysis_data = session.get('analysis_data', {})
+    non_compliance_pages = session.get('non_compliance_pages', {})
 
     # Process each non-compliant page to ensure all control characters are properly escaped
-    if "Non-Compliant Pages" in analysis_data:
-        for page in analysis_data["Non-Compliant Pages"]:
-            if "Non-Compliant Text" in page:
-                for text_item in page["Non-Compliant Text"]:
-                    if "Text" in text_item:
-                        # Replace any literal newlines with escaped newlines
-                        text_item["Text"] = text_item["Text"].replace("\n", "\\n").replace("\r", "\\r")
-                    if "Reason" in text_item:
-                        text_item["Reason"] = text_item["Reason"].replace("\n", "\\n").replace("\r", "\\r")
-    # For backward compatibility
-    elif "Non-Compliant Sections" in analysis_data:
-        for section in analysis_data["Non-Compliant Sections"]:
-            if "Details" in section:
-                # Replace any literal newlines with escaped newlines
-                section["Details"] = section["Details"].replace("\n", "\\n").replace("\r", "\\r")
-            if "Headline" in section:
-                section["Headline"] = section["Headline"].replace("\n", "\\n").replace("\r", "\\r")
+    for page in non_compliance_pages:
+        if "Non-Compliant Text" in page:
+            for text_item in page["Non-Compliant Text"]:
+                if "Text" in text_item:
+                    # Replace any literal newlines with escaped newlines
+                    text_item["Text"] = text_item["Text"].replace("\n", "\\n").replace("\r", "\\r")
+                if "Reason" in text_item:
+                    text_item["Reason"] = text_item["Reason"].replace("\n", "\\n").replace("\r", "\\r")
+
 
     # Sanitize Detailed Analysis if present
-    if "Detailed Analysis" in analysis_data:
-        analysis_data["Detailed Analysis"] = analysis_data["Detailed Analysis"].replace("\n", "\\n").replace("\r", "\\r")
+    if "Detailed Analysis" in non_compliance_pages:
+        non_compliance_pages["Detailed Analysis"] = non_compliance_pages["Detailed Analysis"].replace("\n", "\\n").replace("\r", "\\r")
 
     return render_template('results.html',
                            compliance_status=session['compliance_status'],
                            is_compliant= session['is_compliant'],
-                           non_compliance_pages=session['analysis_data'],
+                           non_compliance_pages=session['non_compliance_pages'],
                            non_compliance_percentage=session['non_compliance_percentage'],
                            analysis_result=session['analysis_result'],
                            original_document=original_document,
