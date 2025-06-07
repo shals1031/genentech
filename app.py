@@ -36,6 +36,7 @@ if not os.path.exists(app.config['SESSION_FILE_DIR']):
 
 @app.route('/')
 def index():
+    session.clear()  # Clears all user session data
     """Render the main page with the first tab active."""
     return render_template('index.html',
                            countries=list(COUNTRY_LANGUAGE_DESCRIPTION.keys()),
