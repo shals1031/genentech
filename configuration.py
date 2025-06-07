@@ -3,9 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
-Bucket_Name = "pharma-compliance"
 # Add your VertextAI details here
-PROJECT_ID = "gonuts-457218"
+PROJECT_ID = "poc-projects-462113"
 VERTEXT_AI_REGION_NAME = "us-central1"
 MODEL_NAME = "gemini-2.5-pro-preview-05-06"
 # Add your OpenAI API details here

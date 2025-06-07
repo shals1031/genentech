@@ -386,4 +386,5 @@ def extract_json_from_text(text):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    # This is used when running locally
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
