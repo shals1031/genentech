@@ -194,6 +194,7 @@ def transform_document():
         # Get data from the session
         analysis_result = session['analysis_result']
         input_value = session['input_value']
+        non_compliance_pages = session['non_compliance_pages']
         country = session['country']
         file_type = session['file_type']
 
@@ -204,6 +205,7 @@ def transform_document():
         transformed_pdf_path = transform_document_with_openai(
             analysis_result,
             document_data,
+            non_compliance_pages,
             file_type,
             country
         )

@@ -47,10 +47,11 @@ def extract_text_from_pdf(pdf_data):
 
 
 def transform_document_with_openai(
-    analysis_document: bytes, # This will always be a Text file
-    non_compliant_document: bytes,
-    file_type: str,
-    country: str
+        analysis_document: bytes, # This will always be a Text file
+        non_compliant_document: bytes,
+        non_compliant_document_pages: bytes,
+        file_type: str,
+        country: str
 ) -> str:
     """
     Transform a non-compliant document into a compliant one using OpenAI.
@@ -90,20 +91,23 @@ def transform_document_with_openai(
     You will be provided with the following documents:
     1.  Analysis Document: {analysis_document_data}
     2.  Original Non Compliant Document: {non_compliant_document_data}
+    3.  Non Compliant Pagewise Document: {non_compliant_document_pages}
 
     Follow these steps to complete the task:
 
     1.  **Analyze the Analysis Document:** Carefully review the analysis document to identify all areas of non-compliance with official {country} medical norms.
-    2.  **Reference the Original Non-Compliant Document:** Use the original non-compliant document as a reference to understand the context of each non-compliant item.
-    3.  **Translate into {language}:** Translate the original non-compliant document into {language}. Ensure the translation is accurate and maintains the original meaning.
-    4.  **Ensure Compliance:** While translating, ensure that all identified non-compliant items are corrected to fully comply with {country} medical norms. Use your expertise to make necessary adjustments and additions. Please also ensure that all the content of the non-compliant document is there and there should not be any loss of data until and unless it is non compliant data. Try to convert the non compliance data into compliant one and add it to the final compliant version.
-    5.  **Generate Compliant PDF:** Create a final PDF version of the translated and compliant document. The PDF should be properly formatted and suitable for official use.
-    6.  **Error Handling:** If full compliance cannot be achieved due to missing information or conflicting regulations, provide a detailed explanation of the issues and suggest possible resolutions.
-    7.  **Language:** Ensure the final document is in {language} and adheres to professional language standards.
+    2.  **Analyze the Non Compliant Pagewise Document:** Carefully review the non-compliant pagewise document to identify all areas of non-compliance with official {country} medical norms. 
+    3.  **Reference the Original Non-Compliant Document:** Use the original non-compliant document as a reference to understand the context of each non-compliant item.
+    4.  **Translate into {language}:** Translate the original non-compliant document into {language}. Ensure the translation is accurate and maintains the original meaning.
+    5.  **Ensure Compliance:** While translating, ensure that all identified non-compliant items are corrected to fully comply with {country} medical norms. Use your expertise to make necessary adjustments and additions. 
+        **Please also ensure that all the content of the Original Non Compliant Document is there and there should not be any loss of data and all the pages of the original document should be there. 
+        **Try to convert the non compliance data into compliant one and add it to the final compliant version.
+    6.  **Generate Compliant PDF:** Create a final PDF version of the translated and compliant document. The PDF should be properly formatted and suitable for official use.
+    7.  **Error Handling:** If full compliance cannot be achieved due to missing information or conflicting regulations, provide a detailed explanation of the issues and suggest possible resolutions.
+    8.  **Language:** Ensure the final document is in {language} and adheres to professional language standards.
 
     Your output should be a fully compliant PDF document in {language}, adhering to all official {country} medical norms. 
-    Please ensure that the document only consist of the translated and compliant content and no other information should be included.
-    Especially some basis sytem information should not be included in the final document.
+    Please ensure that the document only consist of the translated and compliant content ONLY and no other information should be included especially system information should not be included in the final document which is added by you.
     """
 
 

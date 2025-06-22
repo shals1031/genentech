@@ -44,12 +44,6 @@ def extract_text_from_pdf(pdf_data):
 
     return pdf_text
 
-    def _create_prompts(self, country):
-        """Create custom prompts based on country."""
-        prompt = f"Based on official medical norms in {country}, determine whether the content is compliant. If the content is not compliant, identify and highlight the specific parts of the document that violate the regulations."
-        system_instruction = f"You are a senior compliance officer for pharmaceutical regulations in {country}. Your task is to analyze the provided content and determine whether it complies with official medical norms in {country}."
-
-        return prompt, system_instruction
 
 def analyze_content_with_gemini(
     content_parts: List[Union[str, Part]],
